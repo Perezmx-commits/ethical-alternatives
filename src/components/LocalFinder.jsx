@@ -1,20 +1,22 @@
 import { useState } from 'react'
-import { finderCategories, findCategory } from '../data/finderData'
+import { finderCategories, findBestMatch } from '../data/finderData'
 import { companyById } from '../data/companies'
 import GradeBadge from './GradeBadge'
 
-const EXAMPLES = ['books', 'coffee', 'clothing', 'electronics', 'groceries']
+const EXAMPLES = ['stylus', 'charger', 'jeans', 'chocolate', 'coffee', 'clothing', 'books', 'groceries']
 
 export default function LocalFinder({ onShowProfile }) {
   const [product, setProduct] = useState('')
   const [location, setLocation] = useState('')
   const [result, setResult] = useState(null)
   const [searched, setSearched] = useState(false)
+  const [lastQuery, setLastQuery] = useState('')
 
   function doSearch(q = product) {
+    if (!q.trim()) return
     setSearched(true)
-    const cat = findCategory(q)
-    setResult(cat)
+    setLastQuery(q.trim())
+    setResult(findBestMatch(q))
   }
 
   function setExample(ex) {
@@ -25,13 +27,13 @@ export default function LocalFinder({ onShowProfile }) {
   return (
     <div>
       <p style={{ fontSize: 13, color: '#5F5E5A', marginBottom: '1rem' }}>
-        Find ethical local alternatives to big-box stores near you.
+        Search for any product to find ethical alternatives and companies to avoid.
       </p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <input
           type="text"
-          placeholder="What are you buying? (e.g. books, shoes...)"
+          placeholder="What are you buying? (e.g. stylus, jeans, chocolate...)"
           style={{ flex: 2, minWidth: 160 }}
           value={product}
           onChange={e => setProduct(e.target.value)}
@@ -39,7 +41,7 @@ export default function LocalFinder({ onShowProfile }) {
         />
         <input
           type="text"
-          placeholder="City or zip code..."
+          placeholder="City or zip (optional)"
           style={{ flex: 1, minWidth: 120 }}
           value={location}
           onChange={e => setLocation(e.target.value)}
@@ -55,34 +57,27 @@ export default function LocalFinder({ onShowProfile }) {
         Find ethical alternatives
       </button>
 
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        <span style={{ fontSize: 13, color: '#5F5E5A', alignSelf: 'center' }}>Try:</span>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.5rem', alignItems: 'center' }}>
+        <span style={{ fontSize: 13, color: '#5F5E5A' }}>Try:</span>
         {EXAMPLES.map(ex => (
-          <button key={ex} className="btn" onClick={() => setExample(ex)}>{ex}</button>
+          <button key={ex} className="btn" style={{ fontSize: 12, padding: '3px 10px' }} onClick={() => setExample(ex)}>
+            {ex}
+          </button>
         ))}
       </div>
 
       {searched && (
         <div style={{ marginTop: '1.5rem' }}>
-          {result ? (
-            <FinderResult category={result} location={location} onShowProfile={onShowProfile} />
+          {result?.category ? (
+            <FinderResult
+              category={result.category}
+              hint={result.hint}
+              query={lastQuery}
+              location={location}
+              onShowProfile={onShowProfile}
+            />
           ) : (
-            <div style={{ background: '#F1EFE8', borderRadius: 12, padding: '1rem 1.25rem' }}>
-              <p style={{ fontWeight: 500, marginBottom: 6 }}>No specific category matched</p>
-              <p style={{ fontSize: 13, color: '#5F5E5A', lineHeight: 1.5 }}>
-                Try searching for: {EXAMPLES.join(', ')}, banking, pharmacy, or gas.
-                <br />For general shopping, consider local independent stores, co-ops, and secondhand shops first.
-              </p>
-              <a
-                href={`https://www.yelp.com/search?find_desc=${encodeURIComponent(product)}${location ? `&find_loc=${encodeURIComponent(location)}` : ''}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: 13, color: '#185FA5', display: 'inline-block', marginTop: 8 }}
-              >
-                <i className="ti ti-external-link" style={{ marginRight: 4 }} />
-                Search Yelp for local "{product}" options
-              </a>
-            </div>
+            <NoMatch query={lastQuery} location={location} />
           )}
         </div>
       )}
@@ -90,21 +85,33 @@ export default function LocalFinder({ onShowProfile }) {
   )
 }
 
-function FinderResult({ category, location, onShowProfile }) {
-  const avoidCompanies = category.avoidIds
-    .map(id => companyById[id])
-    .filter(Boolean)
+function FinderResult({ category, hint, query, location, onShowProfile }) {
+  const avoidCompanies = category.avoidIds.map(id => companyById[id]).filter(Boolean)
+  const allTips = hint?.pinnedAlts
+    ? [...hint.pinnedAlts, ...category.tips]
+    : category.tips
 
-  const yelpBase = location
-    ? `https://www.yelp.com/search?find_desc=${encodeURIComponent(category.title)}&find_loc=${encodeURIComponent(location)}`
-    : `https://www.yelp.com/search?find_desc=${encodeURIComponent(category.title)}`
+  const displayTitle = hint
+    ? capitalizeFirst(query)
+    : category.title
+
+  const yelpUrl = `https://www.yelp.com/search?find_desc=${encodeURIComponent(query)}${location ? `&find_loc=${encodeURIComponent(location)}` : ''}`
 
   return (
     <div>
-      <h3 style={{ fontWeight: 500, fontSize: 15, marginBottom: '0.75rem' }}>
+      <h3 style={{ fontWeight: 500, fontSize: 15, marginBottom: hint?.note ? 8 : 12 }}>
         <i className="ti ti-circle-check" style={{ color: '#1D9E75', marginRight: 6 }} />
-        {category.title}
+        Results for: {displayTitle}
       </h3>
+
+      {hint?.note && (
+        <div style={{ background: '#E6F1FB', border: '0.5px solid #85B7EB', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+          <p style={{ fontSize: 13, color: '#0C447C', lineHeight: 1.5 }}>
+            <i className="ti ti-info-circle" style={{ marginRight: 6 }} />
+            {hint.note}
+          </p>
+        </div>
+      )}
 
       {avoidCompanies.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
@@ -119,7 +126,10 @@ function FinderResult({ category, location, onShowProfile }) {
                 display: 'flex', alignItems: 'center', gap: 10,
                 background: '#FCEBEB', border: '0.5px solid #f0c0c0',
                 borderRadius: 8, padding: '8px 12px', marginBottom: 6, cursor: 'pointer',
+                transition: 'border-color 0.15s',
               }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = '#e09090'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = '#f0c0c0'}
             >
               <div style={{
                 width: 32, height: 32, borderRadius: 8, background: '#F8D8D8',
@@ -145,7 +155,7 @@ function FinderResult({ category, location, onShowProfile }) {
         Ethical alternatives
       </p>
 
-      {category.tips.map((tip, i) => (
+      {allTips.map((tip, i) => (
         <div key={i} style={{
           background: '#F1EFE8', borderRadius: 8, padding: '10px 14px',
           marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12,
@@ -164,10 +174,11 @@ function FinderResult({ category, location, onShowProfile }) {
                   style={{ fontWeight: 500, fontSize: 13, color: '#185FA5', cursor: 'pointer' }}
                   onClick={() => onShowProfile(tip.companyId)}
                 >
-                  {tip.name}
+                  {tip.name} <i className="ti ti-chevron-right" style={{ fontSize: 11 }} />
                 </span>
               ) : (
-                <a href={tip.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13, color: '#185FA5' }}>
+                <a href={tip.url} target="_blank" rel="noreferrer"
+                  style={{ fontWeight: 500, fontSize: 13, color: '#185FA5' }}>
                   {tip.name}
                 </a>
               )}
@@ -179,27 +190,51 @@ function FinderResult({ category, location, onShowProfile }) {
       ))}
 
       <a
-        href={yelpBase}
+        href={yelpUrl}
         target="_blank"
         rel="noreferrer"
         style={{ fontSize: 13, color: '#185FA5', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}
       >
         <i className="ti ti-map-pin" />
-        Search Yelp for local {category.title.toLowerCase()} options{location ? ` near ${location}` : ''}
+        Search Yelp for local {query.toLowerCase()} options{location ? ` near ${location}` : ''}
+      </a>
+    </div>
+  )
+}
+
+function NoMatch({ query, location }) {
+  const yelpUrl = `https://www.yelp.com/search?find_desc=${encodeURIComponent(query)}${location ? `&find_loc=${encodeURIComponent(location)}` : ''}`
+
+  return (
+    <div style={{ background: '#F1EFE8', borderRadius: 12, padding: '1rem 1.25rem' }}>
+      <p style={{ fontWeight: 500, marginBottom: 6 }}>No specific category matched for "{query}"</p>
+      <p style={{ fontSize: 13, color: '#5F5E5A', lineHeight: 1.5, marginBottom: 10 }}>
+        General tips that apply to almost any purchase:
+      </p>
+      <ul style={{ fontSize: 13, color: '#5F5E5A', lineHeight: 1.8, paddingLeft: '1.25rem', marginBottom: 10 }}>
+        <li>Buy secondhand first — check Facebook Marketplace, Depop, or local thrift stores</li>
+        <li>Buy from local independent stores rather than Amazon or big-box chains</li>
+        <li>Look for certified B Corp brands for that product category</li>
+        <li>Buy less, but buy better quality so it lasts longer</li>
+      </ul>
+      <a
+        href={yelpUrl}
+        target="_blank"
+        rel="noreferrer"
+        style={{ fontSize: 13, color: '#185FA5', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+      >
+        <i className="ti ti-map-pin" />
+        Search Yelp for local "{query}" options{location ? ` near ${location}` : ''}
       </a>
     </div>
   )
 }
 
 function TypeIcon({ type }) {
-  const icons = {
-    Local: 'ti-map-pin',
-    Online: 'ti-world',
-    Chain: 'ti-building-store',
-    Brand: 'ti-tag',
-    Free: 'ti-star',
-    Tool: 'ti-tool',
-    Provider: 'ti-bolt',
-  }
+  const icons = { Local: 'ti-map-pin', Online: 'ti-world', Chain: 'ti-building-store', Brand: 'ti-tag', Free: 'ti-star', Tool: 'ti-tool', Provider: 'ti-bolt' }
   return <i className={`ti ${icons[type] ?? 'ti-circle-check'}`} style={{ fontSize: 14, color: '#27500A' }} />
+}
+
+function capitalizeFirst(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1)
 }

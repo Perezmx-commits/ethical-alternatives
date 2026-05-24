@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { companyById } from '../data/companies'
 import GradeBadge from './GradeBadge'
 import ScoreBar from './ScoreBar'
+import FavoriteButton from './FavoriteButton'
 
-export default function CompanyProfile({ companyId, userRating, reviews, onSetRating, onAddReview, onBack, onShowProfile }) {
+export default function CompanyProfile({ companyId, userRating, reviews, onSetRating, onAddReview, onBack, favorites, onToggleFavorite, onShowProfile }) {
   const c = companyById[companyId]
   const [hovered, setHovered] = useState(0)
   const [reviewText, setReviewText] = useState('')
@@ -13,6 +14,7 @@ export default function CompanyProfile({ companyId, userRating, reviews, onSetRa
   if (!c) return null
 
   const isUngraded = c.grade === 'U'
+  const isFavorited = favorites.includes(c.id)
   const avg = reviews.length
     ? (reviews.reduce((s, r) => s + r.stars, 0) / reviews.length).toFixed(1)
     : null
@@ -29,13 +31,21 @@ export default function CompanyProfile({ companyId, userRating, reviews, onSetRa
 
   return (
     <div>
-      <button
-        style={{ fontSize: 13, color: '#5F5E5A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, marginBottom: '1rem', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit' }}
-        onClick={onBack}
-      >
-        <i className="ti ti-arrow-left" style={{ fontSize: 14 }} />
-        Back
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <button
+          style={{ fontSize: 13, color: '#5F5E5A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, fontFamily: 'inherit' }}
+          onClick={onBack}
+        >
+          <i className="ti ti-arrow-left" style={{ fontSize: 14 }} />
+          Back
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <FavoriteButton isFavorited={isFavorited} onToggle={() => onToggleFavorite(c.id)} size={20} />
+          <span style={{ fontSize: 12, color: isFavorited ? '#C9415A' : '#888780' }}>
+            {isFavorited ? 'Saved' : 'Save'}
+          </span>
+        </div>
+      </div>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: '1rem' }}>
@@ -98,7 +108,6 @@ export default function CompanyProfile({ companyId, userRating, reviews, onSetRa
           <p style={{ fontSize: 13, color: '#5F5E5A', lineHeight: 1.5 }}>
             <i className="ti ti-info-circle" style={{ marginRight: 6, color: '#888780' }} />
             This company has not yet been formally graded. Ethics data is based on community reports only.
-            Want to help? Share what you know in the community section below.
           </p>
         </div>
       )}
@@ -127,8 +136,7 @@ export default function CompanyProfile({ companyId, userRating, reviews, onSetRa
                     style={{ fontWeight: 500, fontSize: 13, color: '#185FA5', cursor: 'pointer' }}
                     onClick={() => onShowProfile(alt.companyId)}
                   >
-                    {alt.name}
-                    <i className="ti ti-chevron-right" style={{ fontSize: 11, marginLeft: 3 }} />
+                    {alt.name} <i className="ti ti-chevron-right" style={{ fontSize: 11 }} />
                   </span>
                 ) : (
                   <a href={alt.url} target="_blank" rel="noreferrer"

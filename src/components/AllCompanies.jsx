@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { companies } from '../data/companies'
 import GradeBadge from './GradeBadge'
+import FavoriteButton from './FavoriteButton'
 
 const SECTORS = ['Retail', 'Tech', 'Food', 'Fashion', 'Energy', 'Finance', 'Auto']
 
-export default function AllCompanies({ onShowProfile }) {
+export default function AllCompanies({ favorites, onToggleFavorite, onShowProfile }) {
   const [query, setQuery] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
   const [catFilter, setCatFilter] = useState('all')
@@ -12,12 +13,8 @@ export default function AllCompanies({ onShowProfile }) {
   const filtered = companies.filter(c => {
     const q = query.toLowerCase()
     const matchQ = !q || c.name.toLowerCase().includes(q) || c.sector.toLowerCase().includes(q)
-    const matchG = gradeFilter === 'all'
-      ? true
-      : gradeFilter === 'U' ? c.grade === 'U' : c.grade === gradeFilter
-    const matchC = catFilter === 'all'
-      ? true
-      : catFilter === 'Ungraded' ? c.grade === 'U' : c.sector === catFilter
+    const matchG = gradeFilter === 'all' ? true : gradeFilter === 'U' ? c.grade === 'U' : c.grade === gradeFilter
+    const matchC = catFilter === 'all' ? true : catFilter === 'Ungraded' ? c.grade === 'U' : c.sector === catFilter
     return matchQ && matchG && matchC
   })
 
@@ -69,21 +66,18 @@ export default function AllCompanies({ onShowProfile }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                   <span style={{ fontWeight: 500, fontSize: 14 }}>{c.name}</span>
                   <GradeBadge grade={c.grade} size={26} />
-                  {c.grade === 'U' && (
-                    <span style={{ fontSize: 11, color: '#888780' }}>Ungraded</span>
-                  )}
+                  {c.grade === 'U' && <span style={{ fontSize: 11, color: '#888780' }}>Ungraded</span>}
                 </div>
                 <span style={{ fontSize: 12, color: '#888780' }}>{c.sector}</span>
               </div>
+              <FavoriteButton isFavorited={favorites.includes(c.id)} onToggle={() => onToggleFavorite(c.id)} />
               <i className="ti ti-chevron-right" style={{ color: '#888780', fontSize: 16 }} />
             </div>
             <p style={{ fontSize: 12, color: '#888780', margin: '8px 0 6px', lineHeight: 1.4 }}>
               {c.summary.slice(0, 110)}…
             </p>
             <div>
-              {c.tags.slice(0, 2).map(t => (
-                <span key={t} className="pill">{t}</span>
-              ))}
+              {c.tags.slice(0, 2).map(t => <span key={t} className="pill">{t}</span>)}
             </div>
           </div>
         ))
@@ -93,9 +87,5 @@ export default function AllCompanies({ onShowProfile }) {
 }
 
 function CatBtn({ label, active, onClick }) {
-  return (
-    <button className={`cat-btn${active ? ' active' : ''}`} onClick={onClick}>
-      {label}
-    </button>
-  )
+  return <button className={`cat-btn${active ? ' active' : ''}`} onClick={onClick}>{label}</button>
 }

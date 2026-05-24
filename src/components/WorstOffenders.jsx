@@ -1,9 +1,10 @@
 import { companies } from '../data/companies'
 import GradeBadge from './GradeBadge'
+import FavoriteButton from './FavoriteButton'
 
 const GRADE_RANK = { F: 0, D: 1, C: 2 }
 
-export default function WorstOffenders({ onShowProfile }) {
+export default function WorstOffenders({ favorites, onToggleFavorite, onShowProfile }) {
   const worst = companies
     .filter(c => c.grade === 'F' || c.grade === 'D' || c.grade === 'C')
     .sort((a, b) => (GRADE_RANK[a.grade] ?? 9) - (GRADE_RANK[b.grade] ?? 9))
@@ -33,6 +34,7 @@ export default function WorstOffenders({ onShowProfile }) {
               {c.tags[0]}{c.tags[1] ? ' · ' + c.tags[1] : ''}
             </p>
           </div>
+          <FavoriteButton isFavorited={favorites.includes(c.id)} onToggle={() => onToggleFavorite(c.id)} />
           <i className="ti ti-chevron-right" style={{ color: '#888780', fontSize: 16 }} />
         </div>
       ))}
